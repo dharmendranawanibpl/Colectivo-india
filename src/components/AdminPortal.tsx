@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Mail, 
@@ -15,9 +15,11 @@ import {
   UserCheck,
   UserX,
   Edit,
-  Trash2
+  Trash2,
+  Globe
 } from 'lucide-react';
 import { Driver, Rider } from '../types';
+import { LanguageType, getTranslation } from '../utils/translations';
 
 interface AdminPortalProps {
   drivers: Driver[];
@@ -34,6 +36,13 @@ interface AdminPortalProps {
   onEditRider?: (id: string, updatedFields: Partial<Rider>) => void;
   isAdminLoggedIn?: boolean;
   onAdminLogout?: () => void;
+
+  language?: LanguageType;
+  onLanguageChange?: (lang: LanguageType) => void;
+  adminUpiId?: string;
+  adminUpiName?: string;
+  upiEnabled?: boolean;
+  onUpdateUpiSettings?: (upiId: string, upiName: string, enabled: boolean) => void;
 }
 
 export default function AdminPortal({ 
@@ -50,7 +59,14 @@ export default function AdminPortal({
   onDeleteRider,
   onEditRider,
   isAdminLoggedIn,
-  onAdminLogout
+  onAdminLogout,
+
+  language = 'en',
+  onLanguageChange,
+  adminUpiId = 'colectivo@okaxis',
+  adminUpiName = 'Colectivo Payments',
+  upiEnabled = true,
+  onUpdateUpiSettings
 }: AdminPortalProps) {
   const [internalAdminLoggedIn, setInternalAdminLoggedIn] = useState(false);
   const loggedIn = isAdminLoggedIn !== undefined ? isAdminLoggedIn : internalAdminLoggedIn;
@@ -62,8 +78,8 @@ export default function AdminPortal({
   const [rejectionTargetId, setRejectionTargetId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
-  // Tab Manager state
-  const [activeTab, setActiveTab] = useState<'drivers' | 'riders' | 'rates'>('drivers');
+  // Tab Manager state (includes drivers, riders, rates, and upi)
+  const [activeTab, setActiveTab] = useState<'drivers' | 'riders' | 'rates' | 'upi'>('drivers');
 
   // Direct editing states for drivers & riders
   const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
@@ -79,6 +95,26 @@ export default function AdminPortal({
   const [editedComfortRate, setEditedComfortRate] = useState(comfortRate);
   const [editedComfortPlusRate, setEditedComfortPlusRate] = useState(comfortPlusRate);
   const [rateFeedback, setRateFeedback] = useState<string | null>(null);
+
+  // Local UPI state for configuration forms
+  const [localUpiId, setLocalUpiId] = useState(adminUpiId);
+  const [localUpiName, setLocalUpiName] = useState(adminUpiName);
+  const [localUpiEnabled, setLocalUpiEnabled] = useState(upiEnabled);
+  const [upiFeedback, setUpiFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalUpiId(adminUpiId);
+  }, [adminUpiId]);
+
+  useEffect(() => {
+    setLocalUpiName(adminUpiName);
+  }, [adminUpiName]);
+
+  useEffect(() => {
+    setLocalUpiEnabled(upiEnabled);
+  }, [upiEnabled]);
+
+  const t = (key: string, def?: string) => getTranslation(language, key, def);
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +138,15 @@ export default function AdminPortal({
     onUpdateRates(editedComfortRate, editedComfortPlusRate);
     setRateFeedback('Rates updated successfully across all matching modules!');
     setTimeout(() => setRateFeedback(null), 3000);
+  };
+
+  const handleSaveUpiSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (onUpdateUpiSettings) {
+      onUpdateUpiSettings(localUpiId, localUpiName, localUpiEnabled);
+    }
+    setUpiFeedback(t('upiSavedSuccess', 'UPI receiving configurations successfully updated in secure memory!'));
+    setTimeout(() => setUpiFeedback(null), 3500);
   };
 
   if (!loggedIn) {
@@ -194,20 +239,32 @@ export default function AdminPortal({
         <div className="flex items-center gap-1.5">
           <ShieldCheck className="w-4.5 h-4.5 text-emerald-400" />
           <div>
-            <h3 className="font-extrabold text-xs tracking-tight uppercase">Colectivo Admin Console</h3>
+            <h3 className="font-extrabold text-xs tracking-tight uppercase">{t('adminConsole')}</h3>
             <p className="text-[8px] text-emerald-400 font-mono leading-none font-bold">STATE REVOLVING AUDIT ACTIVE</p>
           </div>
         </div>
 
-        <button
-          onClick={() => {
-            setInternalAdminLoggedIn(false);
-            onAdminLogout?.();
-          }}
-          className="text-[9px] font-extrabold font-mono text-zinc-400 hover:text-white border border-zinc-700 hover:border-zinc-500 px-2.5 py-1 rounded bg-zinc-900 cursor-pointer"
-        >
-          LOGOUT
-        </button>
+        <div className="flex items-center gap-1.5">
+          {/* Language Toggle Button */}
+          <button
+            onClick={() => onLanguageChange?.(language === 'en' ? 'hi' : 'en')}
+            className="text-[9px] font-extrabold font-mono text-zinc-400 hover:text-white border border-zinc-700 hover:border-zinc-500 px-2.5 py-1 rounded bg-zinc-900 cursor-pointer flex items-center gap-1"
+            title="Switch Language / भाषा बदलें"
+          >
+            <Globe className="w-3 h-3 text-teal-400" />
+            <span>{language === 'en' ? 'EN' : 'हिन्दी'}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setInternalAdminLoggedIn(false);
+              onAdminLogout?.();
+            }}
+            className="text-[9px] font-extrabold font-mono text-rose-400 hover:text-white border border-zinc-700 hover:border-rose-500 px-2.5 py-1 rounded bg-zinc-900 cursor-pointer"
+          >
+            LOGOUT
+          </button>
+        </div>
       </div>
 
       {/* Admin Tab Bar Navigation */}
@@ -216,31 +273,41 @@ export default function AdminPortal({
           onClick={() => setActiveTab('drivers')}
           className={`flex-1 py-2.5 text-center transition-all flex items-center justify-center gap-1.5 border-b-2 uppercase ${
             activeTab === 'drivers' 
-              ? 'bg-slate-805 text-white border-emerald-400 font-extrabold bg-slate-800' 
+              ? 'bg-slate-850 text-white border-emerald-400 font-extrabold bg-slate-800' 
               : 'border-transparent hover:text-white hover:bg-slate-800/40'
           }`}
         >
-          <Car className="w-3 h-3" /> Drivers ({drivers.length})
+          <Car className="w-3 h-3" /> {t('driversCount')} ({drivers.length})
         </button>
         <button
           onClick={() => setActiveTab('riders')}
           className={`flex-1 py-2.5 text-center transition-all flex items-center justify-center gap-1.5 border-b-2 uppercase ${
             activeTab === 'riders' 
-              ? 'bg-slate-805 text-white border-emerald-400 font-extrabold bg-slate-800' 
+              ? 'bg-slate-850 text-white border-emerald-400 font-extrabold bg-slate-800' 
               : 'border-transparent hover:text-white hover:bg-slate-800/40'
           }`}
         >
-          <Users className="w-3 h-3" /> Riders ({riders.length})
+          <Users className="w-3 h-3" /> {t('ridersCount')} ({riders.length})
         </button>
         <button
           onClick={() => setActiveTab('rates')}
           className={`flex-1 py-2.5 text-center transition-all flex items-center justify-center gap-1.5 border-b-2 uppercase ${
             activeTab === 'rates' 
-              ? 'bg-slate-805 text-white border-emerald-400 font-extrabold bg-slate-800' 
+              ? 'bg-slate-850 text-white border-emerald-400 font-extrabold bg-slate-800' 
               : 'border-transparent hover:text-white hover:bg-slate-800/40'
           }`}
         >
-          <Settings className="w-3 h-3" /> System Rates
+          <Settings className="w-3 h-3" /> {t('systemRates')}
+        </button>
+        <button
+          onClick={() => setActiveTab('upi')}
+          className={`flex-1 py-2.5 text-center transition-all flex items-center justify-center gap-1.5 border-b-2 uppercase ${
+            activeTab === 'upi' 
+              ? 'bg-slate-850 text-white border-emerald-400 font-extrabold bg-slate-800' 
+              : 'border-transparent hover:text-white hover:bg-slate-800/40'
+          }`}
+        >
+          <DollarSign className="w-3 h-3 text-emerald-400" /> {t('upiSettings')}
         </button>
       </div>
 
@@ -787,6 +854,93 @@ export default function AdminPortal({
               className="w-full py-2 bg-black hover:bg-neutral-800 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-sm"
             >
               Apply Rates Config
+            </button>
+          </form>
+        )}
+
+        {/* UPI CONFIGURATION TAB PANEL */}
+        {activeTab === 'upi' && (
+          <form onSubmit={handleSaveUpiSettings} className="flex flex-col gap-4 bg-white p-4 border border-slate-200 rounded-3xl shadow-sm text-left">
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-extrabold text-slate-800 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                🇮🇳 {t('upiSettings')} Settings
+              </span>
+              <p className="text-[9px] text-slate-500 leading-relaxed">
+                {t('onlyAdminEdit', 'Only registered administrators can edit UPI receiving details.')}
+              </p>
+            </div>
+
+            {upiFeedback && (
+              <div className="text-[9px] font-bold p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl flex items-center gap-1.5 animate-fadeIn">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span>{upiFeedback}</span>
+              </div>
+            )}
+
+            {/* UPI ID Input */}
+            <div className="flex flex-col gap-1">
+              <label className="font-extrabold text-neutral-800 uppercase font-mono text-[9px]">
+                {t('upiReceivingId', 'Admin UPI ID for Receivings')}
+              </label>
+              <input
+                type="text"
+                placeholder="colectivo@okaxis"
+                value={localUpiId}
+                onChange={(e) => setLocalUpiId(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono font-bold"
+                required
+              />
+              {!localUpiId.includes('@') && localUpiId.length > 0 && (
+                <span className="text-[8px] text-amber-600 font-mono font-bold">
+                  ⚠️ {t('invalidUpiId', 'Format must be username@psp (e.g. name@gpay)')}
+                </span>
+              )}
+            </div>
+
+            {/* Merchant / Beneficiary Name */}
+            <div className="flex flex-col gap-1">
+              <label className="font-extrabold text-neutral-800 uppercase font-mono text-[9px]">
+                {t('upiReceiverName', 'Beneficiary/Merchant Name')}
+              </label>
+              <input
+                type="text"
+                placeholder="Colectivo Payments"
+                value={localUpiName}
+                onChange={(e) => setLocalUpiName(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-semibold"
+                required
+              />
+            </div>
+
+            {/* UPI Enable Toggle */}
+            <div className="flex items-center justify-between bg-slate-50 border border-slate-100 p-2.5 rounded-xl">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[9px] font-bold text-slate-700 uppercase font-mono">Enable Active QR Payments</span>
+                <span className="text-[8px] text-slate-400">Generate checkout links & scannable QR Codes for riders.</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={localUpiEnabled}
+                onChange={(e) => setLocalUpiEnabled(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 accent-emerald-500 cursor-pointer"
+              />
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-2xl flex flex-col gap-1 flex-shrink-0">
+              <span className="font-extrabold text-amber-800 uppercase font-mono text-[8.5px] leading-tight flex items-center gap-1">
+                🔒 Enforce Admin Authority
+              </span>
+              <p className="text-[8px] leading-relaxed text-amber-700">
+                Any changes made here dynamically binds all checkout screens across the ride-sharing application. Payments made via UPI will route immediately to the designated merchant address.
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={localUpiId.length === 0 || !localUpiId.includes('@')}
+              className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-900 disabled:bg-stone-300 disabled:cursor-not-allowed text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+            >
+              📊 {t('saveUpiConfig', 'Apply UPI Settings')}
             </button>
           </form>
         )}

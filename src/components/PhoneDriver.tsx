@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 import { CityData, Driver, Ride, GridNode } from '../types';
 import { VEHICLE_CONFIGS, CITIES } from '../constants/cities';
+import { LanguageType, getTranslation } from '../utils/translations';
+import { Globe } from 'lucide-react';
 
 interface PhoneDriverProps {
   city: CityData;
@@ -54,6 +56,9 @@ interface PhoneDriverProps {
   onTopUpWallet: (amount: number) => void;
   onSimulateMidnightReset?: () => void;
   onChangeCity?: (cityId: string) => void;
+
+  language?: LanguageType;
+  onLanguageChange?: (lang: LanguageType) => void;
 }
 
 export default function PhoneDriver({
@@ -80,8 +85,11 @@ export default function PhoneDriver({
   onSimulateMidnightReset,
   onChangeCity,
   appColorTheme = 'orange',
+  language = 'en',
+  onLanguageChange,
 }: PhoneDriverProps) {
   const themeColor = appColorTheme;
+  const t = (key: string, def?: string) => getTranslation(language, key, def);
 
   // Dynamic Theme Styling configurations
   const btnThemeBg = themeColor === 'orange'
@@ -869,7 +877,15 @@ export default function PhoneDriver({
                 <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
                 <div>
                   <div className="flex items-center gap-1">
-                    <h3 className="font-extrabold text-xs tracking-tight text-black uppercase font-display leading-none">Colectivo Driver</h3>
+                    <h3 className="font-extrabold text-xs tracking-tight text-black uppercase font-display leading-none">{t('colectivoDriver', 'Colectivo Driver')}</h3>
+                    <button 
+                      onClick={() => onLanguageChange?.(language === 'en' ? 'hi' : 'en')}
+                      className="text-slate-400 hover:text-indigo-600 p-0.5 rounded transition-colors cursor-pointer"
+                      title="Switch Language / भाषा बदलें"
+                      id="btn_driver_lang_toggle"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-indigo-500" />
+                    </button>
                     <button 
                       onClick={onDriverLogout}
                       className="text-slate-400 hover:text-rose-600 p-0.5 rounded transition-colors cursor-pointer animate-pulse"

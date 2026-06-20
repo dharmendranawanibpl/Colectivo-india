@@ -246,6 +246,12 @@ export default function App() {
   const [comfortRate, setComfortRate] = useState(9.0);
   const [comfortPlusRate, setComfortPlusRate] = useState(13.0);
 
+  // UPI configurations & general Language settings (English / Hindi)
+  const [adminUpiId, setAdminUpiId] = useState('colectivo@okaxis');
+  const [adminUpiName, setAdminUpiName] = useState('Colectivo Payments');
+  const [upiEnabled, setUpiEnabled] = useState(true);
+  const [language, setLanguage] = useState<'en' | 'hi'>('en');
+
   // Passenger controls
   const [selectedPickup, setSelectedPickup] = useState<Landmark | null>(null);
   const [selectedDropoff, setSelectedDropoff] = useState<Landmark | null>(null);
@@ -446,7 +452,7 @@ export default function App() {
         } catch (err) {
           handleFirestoreError(err, OperationType.GET, 'settings/rates');
         }
-        if (!docSnap.exists() && active) {
+        if ((!docSnap || !docSnap.exists()) && active) {
           try {
             await setDoc(doc(db, 'settings', 'rates'), {
               comfortRate: 9.0,
@@ -461,11 +467,37 @@ export default function App() {
       }
     };
 
+    // 4. Check and Bootstrap UPI Configuration settings
+    const checkAndInitUpiSettings = async () => {
+      try {
+        let docSnap;
+        try {
+          docSnap = await getDoc(doc(db, 'settings', 'upi'));
+        } catch (err) {
+          handleFirestoreError(err, OperationType.GET, 'settings/upi');
+        }
+        if ((!docSnap || !docSnap.exists()) && active) {
+          try {
+            await setDoc(doc(db, 'settings', 'upi'), {
+              adminUpiId: 'colectivo@okaxis',
+              adminUpiName: 'Colectivo Payments',
+              upiEnabled: true
+            });
+          } catch (err) {
+            handleFirestoreError(err, OperationType.CREATE, 'settings/upi');
+          }
+        }
+      } catch (err) {
+        console.warn("Bootstrap UPI settings failed:", err);
+      }
+    };
+
     // Run bootstraps sequentially
     const runBootstraps = async () => {
       await checkAndInitRiders();
       await checkAndInitDrivers();
       await checkAndInitSettings();
+      await checkAndInitUpiSettings();
     };
     runBootstraps();
 
@@ -522,11 +554,24 @@ export default function App() {
       handleFirestoreError(err, OperationType.GET, 'settings/rates');
     });
 
+    const unsubUpiSettings = onSnapshot(doc(db, 'settings', 'upi'), (snap) => {
+      if (!active) return;
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.adminUpiId !== undefined) setAdminUpiId(data.adminUpiId);
+        if (data.adminUpiName !== undefined) setAdminUpiName(data.adminUpiName);
+        if (data.upiEnabled !== undefined) setUpiEnabled(data.upiEnabled);
+      }
+    }, (err) => {
+      handleFirestoreError(err, OperationType.GET, 'settings/upi');
+    });
+
     return () => {
       active = false;
       unsubRiders();
       unsubDrivers();
       unsubSettings();
+      unsubUpiSettings();
     };
   }, [currentCityId]);
 
@@ -1175,6 +1220,13 @@ export default function App() {
     setComfortRate(comfort);
     setComfortPlusRate(comfortPlus);
     saveDocument('settings', 'rates', { comfortRate: comfort, comfortPlusRate: comfortPlus });
+  };
+
+  const handleUpdateUpiSettings = (upiId: string, upiName: string, enabled: boolean) => {
+    setAdminUpiId(upiId);
+    setAdminUpiName(upiName);
+    setUpiEnabled(enabled);
+    saveDocument('settings', 'upi', { adminUpiId: upiId, adminUpiName: upiName, upiEnabled: enabled });
   };
 
   // Toggle online driver status
@@ -2319,6 +2371,11 @@ export default function App() {
                         setIsSearching={setIsSearching}
                         onChangeCity={setCurrentCityId}
                         trafficLevel={trafficLevel}
+                        language={language}
+                        onLanguageChange={setLanguage}
+                        adminUpiId={adminUpiId}
+                        adminUpiName={adminUpiName}
+                        upiEnabled={upiEnabled}
                       />
                     </div>
 
@@ -2382,6 +2439,8 @@ export default function App() {
                         onTopUpWallet={handleDriverTopUpWallet}
                         onSimulateMidnightReset={handleSimulateMidnightReset}
                         onChangeCity={setCurrentCityId}
+                        language={language}
+                        onLanguageChange={setLanguage}
                       />
                     </div>
 
@@ -2446,6 +2505,12 @@ export default function App() {
                           setAdminMasterLoggedIn(false);
                           setSimSelectedRole(null);
                         }}
+                        language={language}
+                        onLanguageChange={setLanguage}
+                        adminUpiId={adminUpiId}
+                        adminUpiName={adminUpiName}
+                        upiEnabled={upiEnabled}
+                        onUpdateUpiSettings={handleUpdateUpiSettings}
                       />
                     </div>
 

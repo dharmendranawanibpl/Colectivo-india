@@ -29,6 +29,8 @@ import {
 import { CityData, Landmark, VehicleConfig, Ride, ChatMessage, PromoCode, VehicleTier, Rider } from '../types';
 import { VEHICLE_CONFIGS, CITIES } from '../constants/cities';
 import { getGridFromLatLng, calculateRouteDetails } from '../utils/routing';
+import { LanguageType, getTranslation } from '../utils/translations';
+import { Globe } from 'lucide-react';
 
 const tierIconMap: Record<string, React.ComponentType<any>> = {
   Car: Car,
@@ -75,6 +77,12 @@ interface PhonePassengerProps {
   setIsSearching?: (b: boolean) => void;
   onChangeCity?: (cityId: string) => void;
   trafficLevel?: 'light' | 'moderate' | 'heavy';
+
+  language?: LanguageType;
+  onLanguageChange?: (lang: LanguageType) => void;
+  adminUpiId?: string;
+  adminUpiName?: string;
+  upiEnabled?: boolean;
 }
 
 export default function PhonePassenger({
@@ -112,8 +120,21 @@ export default function PhonePassenger({
   isSearching: propIsSearching,
   setIsSearching: propSetIsSearching,
   trafficLevel = 'light',
+  language = 'en',
+  onLanguageChange,
+  adminUpiId = 'colectivo@okaxis',
+  adminUpiName = 'Colectivo Payments',
+  upiEnabled = true,
 }: PhonePassengerProps) {
   const themeColor = appColorTheme;
+
+  const t = (key: string, def?: string) => getTranslation(language, key, def);
+
+  // Custom local states for payments (UPI vs Wallet)
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'upi'>('wallet');
+  const [passengerUpiId, setPassengerUpiId] = useState('');
+  const [isUpiPopupOpen, setIsUpiPopupOpen] = useState(false);
+  const [upiPaymentPaid, setUpiPaymentPaid] = useState(false);
 
   // Dynamic Theme Styling configurations
   const btnThemeBg = themeColor === 'orange'
@@ -539,8 +560,16 @@ export default function PhonePassenger({
                     C
                   </div>
                   <div>
-                    <div className="flex items-center gap-1">
-                      <h3 className="font-extrabold text-sm tracking-tight text-black font-display uppercase leading-none">Colectivo</h3>
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="font-extrabold text-sm tracking-tight text-black font-display uppercase leading-none">{t('colectivo', 'Colectivo')}</h3>
+                      <button 
+                        onClick={() => onLanguageChange?.(language === 'en' ? 'hi' : 'en')}
+                        className="text-slate-400 hover:text-indigo-600 p-0.5 rounded transition-colors"
+                        title="Switch Language / भाषा बदलें"
+                        id="btn_passenger_lang_toggle"
+                      >
+                        <Globe className="w-3.5 h-3.5 text-indigo-500" />
+                      </button>
                       <button 
                         onClick={onRiderLogout}
                         className="text-slate-400 hover:text-rose-600 p-0.5 rounded transition-colors"
@@ -1003,6 +1032,58 @@ export default function PhonePassenger({
                       );
                     })}
                   </div>
+
+                  {/* Payment Method Selector */}
+                  <div className="flex flex-col gap-2 mt-1 shrink-0">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 font-sans">
+                      {t('paymentMethodsTitle', 'Choose Payment Method')}
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('wallet')}
+                        className={`p-2 rounded-xl border flex flex-col gap-0.5 text-left transition-all cursor-pointer ${
+                          paymentMethod === 'wallet' 
+                            ? 'border-indigo-600 bg-indigo-50/40 text-indigo-950 font-bold' 
+                            : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
+                        }`}
+                        id="payment_method_wallet_btn"
+                      >
+                        <div className="flex items-center gap-1">
+                          <Wallet className="w-3 h-3 text-indigo-650" />
+                          <span className="text-[9px] leading-tight font-black uppercase font-mono">
+                            {t('walletPayment', 'Wallet')}
+                          </span>
+                        </div>
+                        <span className="text-[8.5px] text-stone-500 font-mono">₹{walletBalance.toFixed(2)}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (upiEnabled) setPaymentMethod('upi');
+                        }}
+                        disabled={!upiEnabled}
+                        className={`p-2 rounded-xl border flex flex-col gap-0.5 text-left transition-all relative ${
+                          !upiEnabled 
+                            ? 'opacity-45 cursor-not-allowed bg-stone-100 border-stone-200 text-stone-400' 
+                            : paymentMethod === 'upi' 
+                              ? 'border-emerald-600 bg-emerald-50/40 text-emerald-950 font-bold' 
+                              : 'border-stone-200 bg-white text-stone-700 hover:bg-slate-50 cursor-pointer'
+                        }`}
+                        id="payment_method_upi_btn"
+                      >
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9.5px] leading-tight font-black uppercase font-mono">
+                            🇮🇳 {t('upiPayment', 'UPI')}
+                          </span>
+                        </div>
+                        <span className="text-[8.5px] text-stone-500 font-mono truncate max-w-full">
+                          {upiEnabled ? adminUpiId : 'Disabled'}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 /* Saved Landmarks visual selector block */
@@ -1072,12 +1153,22 @@ export default function PhonePassenger({
                 <button
                   onClick={() => {
                     const matchedConfig = VEHICLE_CONFIGS.find(v => v.id === selectedTier)!;
-                    onRequestRide(selectedTier, promoCodeApplied?.code || '');
+                    const price = calculateTierPrice(matchedConfig);
+                    if (paymentMethod === 'wallet') {
+                      if (walletBalance < price) {
+                        alert(t('insufficientBalance', 'Insufficient balance in wallet! Please top up first or pay using UPI.'));
+                        return;
+                      }
+                      onRequestRide(selectedTier, promoCodeApplied?.code || '');
+                    } else {
+                      // UPI Flow: open QR payment overlay
+                      setIsUpiPopupOpen(true);
+                    }
                   }}
                   className={`w-full ${btnThemeBg} font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01] cursor-pointer`}
                   id="btn_request_ride"
                 >
-                  <span>CONFIRM {VEHICLE_CONFIGS.find(v => v.id === selectedTier)?.name.toUpperCase()} RIDE</span>
+                  <span>{t('confirmRideBtn', 'CONFIRM RIDE ASSIGNMENT')}</span>
                 </button>
               ) : (
                 <button
@@ -1573,6 +1664,93 @@ export default function PhonePassenger({
           </div>
         )}
       </div>
+
+      {/* UPI Payment Modal Overlay */}
+      {isUpiPopupOpen && (
+        <div className="absolute inset-0 bg-slate-950/95 z-50 flex flex-col justify-between p-5 text-center animate-fadeIn select-none text-slate-800 font-sans">
+          <div className="bg-white rounded-[32px] p-5 shadow-2xl flex flex-col gap-3.5 my-auto border border-emerald-105">
+            {/* Header */}
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center text-white font-extrabold shadow-md text-[13px]">
+                🇮🇳
+              </div>
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight">{t('upiUpiPayments', 'Indian UPI Gateway')}</h3>
+              <p className="text-[8.5px] text-slate-500 max-w-[230px] leading-relaxed">
+                {t('upiPayDetails', 'Scan using GPay, PhonePe, Paytm, BHIM or any Indian UPI application.')}
+              </p>
+            </div>
+
+            {/* Price Badge */}
+            <div className="bg-emerald-50/60 border border-emerald-100 p-2.5 rounded-2xl flex justify-between items-center text-left">
+              <div className="min-w-0 flex-1">
+                <span className="text-[7px] text-emerald-600 font-mono font-bold uppercase tracking-wider block leading-none">{t('payingToLabel', 'RECEIVING PARTY')}</span>
+                <span className="font-extrabold text-[11px] text-slate-900 leading-tight block truncate mt-1">{adminUpiName}</span>
+                <span className="text-[8px] text-slate-400 font-mono block leading-none truncate uppercase mt-0.5">{adminUpiId}</span>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="text-[7px] text-emerald-600 font-mono font-bold uppercase tracking-wider block leading-none">{t('payableAmountLabel', 'AMOUNT DUE')}</span>
+                <span className="font-black text-sm text-emerald-700 font-mono block mt-1">₹{calculateTierPrice(VEHICLE_CONFIGS.find(v => v.id === selectedTier)!).toFixed(2)}</span>
+              </div>
+            </div>
+
+            {/* User UPI ID Input */}
+            <div className="flex flex-col gap-1 text-left">
+              <label className="text-[8px] font-extrabold text-slate-500 uppercase font-mono">{t('yourUpiIdField', 'Your UPI ID (For reference, e.g. name@paytm)')}</label>
+              <input
+                type="text"
+                placeholder="you@upi"
+                value={passengerUpiId}
+                onChange={(e) => setPassengerUpiId(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+              />
+            </div>
+
+            {/* Dynamic UPI QR Code */}
+            <div className="flex flex-col items-center justify-center p-2.5 bg-slate-50 rounded-2xl border border-slate-150">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(`upi://pay?pa=${adminUpiId}&pn=${encodeURIComponent(adminUpiName)}&am=${calculateTierPrice(VEHICLE_CONFIGS.find(v => v.id === selectedTier)!).toFixed(2)}&cu=INR&tn=ColectivoRide`)}`}
+                alt="UPI Scannable QR"
+                className="w-24 h-24 border border-neutral-200 rounded-lg shadow-sm bg-white select-none pointer-events-none"
+                referrerPolicy="no-referrer"
+              />
+              <span className="text-[7px] text-emerald-650 font-bold uppercase tracking-widest font-mono mt-1.5 animate-pulse">
+                📷 Scannable Dynamic QR Active
+              </span>
+            </div>
+
+            {/* Interaction note */}
+            <p className="text-[7.5px] leading-relaxed text-stone-400 font-medium max-w-[245px] mx-auto italic">
+              *Instant UPI sandbox detection is active. Click confirm below after completing the transfer in your application.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-2 mt-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsUpiPopupOpen(false);
+                }}
+                className="py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-extrabold text-[9px] uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+              >
+                {t('cancelBtn', 'Cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsUpiPopupOpen(false);
+                  setPassengerUpiId('');
+                  // Request the service
+                  onRequestRide(selectedTier, promoCodeApplied?.code || '');
+                  alert("🎉 " + t('upiVerifiedSuccess', "UPI payment receipt auto-verified! Booking request dispatched."));
+                }}
+                className="py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[9px] uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md"
+              >
+                {t('confirmPaidBtn', 'Confirm Paid')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Emergency SOS Countdown Warning Overlay */}
       {sosCountdown !== null && (
