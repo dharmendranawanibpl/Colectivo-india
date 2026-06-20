@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { getTodayString } from '../utils/date';
 import { 
   CircleDot, 
@@ -981,15 +982,40 @@ export default function PhoneDriver({
             )}
 
             {/* Pulsing "Finding Request" banner */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm">
-              <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400 block mb-1 font-mono">Queue Active</span>
-              <h4 className="font-extrabold text-sm text-black flex items-center justify-center gap-1.5 font-display">
-                <span className="inline-block w-2.5 h-2.5 bg-black rounded-full animate-ping"></span>
-                <span>Searching for Rides...</span>
-              </h4>
-              <p className="text-[9px] text-slate-505 text-slate-500 mt-1.5 leading-relaxed font-sans font-medium">
-                Sitting in {city.name} grid network. Keep app open to receive localized match events.
-              </p>
+            <div className="bg-slate-950 text-white rounded-2xl p-5 text-center shadow-lg border border-slate-800 relative overflow-hidden flex flex-col items-center gap-3">
+              <div className="absolute inset-0 bg-slate-900/40" />
+              
+              {/* Radar circular container */}
+              <div className="w-16 h-16 rounded-full border border-teal-500/30 flex items-center justify-center relative bg-teal-950/10 z-10 overflow-hidden">
+                {/* Concentric rings */}
+                <div className="absolute w-12 h-12 rounded-full border border-teal-500/20" />
+                <div className="absolute w-6 h-6 rounded-full border border-teal-550/10" />
+                
+                {/* Horizontal & vertical lines */}
+                <div className="absolute inset-x-0 h-[1px] bg-teal-500/15" />
+                <div className="absolute inset-y-0 w-[1px] bg-teal-500/15" />
+                
+                {/* Rotating sweep line */}
+                <div className="absolute inset-0 origin-center animate-spin duration-3000">
+                  <div className="w-1/2 h-[2px] bg-gradient-to-r from-transparent to-teal-400 absolute top-1/2 left-0 -translate-y-1/2 shadow-[0_0_8px_#2dd4bf]" />
+                </div>
+
+                {/* Concentric expanding ripples */}
+                <span className="absolute w-full h-full rounded-full bg-teal-500/10 animate-ping opacity-60" />
+                
+                {/* Center dot */}
+                <div className="w-2 h-2 bg-teal-400 rounded-full shadow-[0_0_10px_#2dd4bf] relative z-15" />
+              </div>
+
+              <div className="z-10 mt-1">
+                <span className="text-[9px] uppercase font-bold tracking-widest text-teal-400 block mb-1 font-mono">Queue Dispatch Active</span>
+                <h4 className="font-extrabold text-sm text-white flex items-center justify-center gap-1.5 font-display">
+                  <span>Searching for Rides...</span>
+                </h4>
+                <p className="text-[9px] text-slate-400 mt-1.5 max-w-[210px] leading-relaxed font-sans font-medium">
+                  Positioned in {city.name} district grid network. Matching you with priority riders.
+                </p>
+              </div>
             </div>
 
             {/* Earnings stats dashboard modules */}
@@ -1123,6 +1149,101 @@ export default function PhoneDriver({
         ) : (
           /* ACTIVE JOURNEY (PICKING UP / ARRIVED / TRAVELLING) */
           <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden" id="active_driver_journey_screen">
+            {/* Direct Animated Stepper for Dispatch cycle */}
+            <div className="bg-slate-900 text-white px-4 py-3 border-b border-slate-800 flex flex-col gap-2 relative shadow-sm shrink-0">
+              <div className="flex justify-between items-center text-[8px] font-mono tracking-widest text-slate-400 font-bold uppercase">
+                <span>Active Dispatch Progress</span>
+                <span className="text-emerald-400 animate-pulse">● State Syncing</span>
+              </div>
+              
+              <div className="flex justify-between items-center gap-1.5 mt-1 select-none relative">
+                {/* Connecting lines backend */}
+                <div className="absolute top-3 left-3 right-3 h-[2px] bg-slate-800 z-0" />
+                
+                {/* Connecting active line fill */}
+                <div 
+                  className="absolute top-3 left-3 h-[2px] bg-gradient-to-r from-emerald-500 to-amber-500 z-0 transition-all duration-1000 ease-out"
+                  style={{
+                    width: activeRide.status === 'picking_up' ? '33%' :
+                           activeRide.status === 'arrived' ? '66%' :
+                           activeRide.status === 'in_transit' ? '100%' : '0%'
+                  }}
+                />
+
+                {/* Step 1: Accept/Match */}
+                <div className="flex flex-col items-center gap-1 z-10 w-1/4">
+                  <div className="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-[9px] shadow-lg border border-emerald-400 transition-all duration-500">
+                    ✕
+                  </div>
+                  <span className="text-[7px] font-mono uppercase tracking-tight text-emerald-400 font-extrabold text-center">Matched</span>
+                </div>
+
+                {/* Step 2: Routing */}
+                <div className="flex flex-col items-center gap-1 z-10 w-1/4">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[9px] transition-all duration-500 border ${
+                    activeRide.status === 'picking_up'
+                      ? 'bg-amber-500 text-black border-amber-400 ring-4 ring-amber-500/30'
+                      : activeRide.status === 'arrived' || activeRide.status === 'in_transit'
+                        ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                        : 'bg-slate-800 text-slate-500 border-slate-700/50'
+                  }`}>
+                    {activeRide.status === 'picking_up' ? (
+                      <span className="animate-spin duration-3000">⟳</span>
+                    ) : activeRide.status === 'arrived' || activeRide.status === 'in_transit' ? (
+                      '✓'
+                    ) : (
+                      '2'
+                    )}
+                  </div>
+                  <span className={`text-[7px] font-mono uppercase tracking-tight text-center font-extrabold ${
+                    activeRide.status === 'picking_up' ? 'text-amber-400 animate-pulse' :
+                    activeRide.status === 'arrived' || activeRide.status === 'in_transit' ? 'text-emerald-400' : 'text-slate-500'
+                  }`}>Route</span>
+                </div>
+
+                {/* Step 3: Arrived / Boarding */}
+                <div className="flex flex-col items-center gap-1 z-10 w-1/4">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[9px] transition-all duration-500 border ${
+                    activeRide.status === 'arrived'
+                      ? 'bg-amber-500 text-black border-amber-400 ring-4 ring-amber-500/30'
+                      : activeRide.status === 'in_transit'
+                        ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                        : 'bg-slate-800 text-slate-500 border-slate-700/50'
+                  }`}>
+                    {activeRide.status === 'arrived' ? (
+                      <span className="animate-bounce">↓</span>
+                    ) : activeRide.status === 'in_transit' ? (
+                      '✓'
+                    ) : (
+                      '3'
+                    )}
+                  </div>
+                  <span className={`text-[7px] font-mono uppercase tracking-tight text-center font-extrabold ${
+                    activeRide.status === 'arrived' ? 'text-amber-400 animate-pulse' :
+                    activeRide.status === 'in_transit' ? 'text-emerald-400' : 'text-slate-500'
+                  }`}>Board</span>
+                </div>
+
+                {/* Step 4: Carrying / Transit */}
+                <div className="flex flex-col items-center gap-1 z-10 w-1/4">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[9px] transition-all duration-500 border ${
+                    activeRide.status === 'in_transit'
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 ring-4 ring-emerald-500/20'
+                      : 'bg-slate-800 text-slate-500 border-slate-700/50'
+                  }`}>
+                    {activeRide.status === 'in_transit' ? (
+                      <span className="inline-block animate-pulse">⚡</span>
+                    ) : (
+                      '4'
+                    )}
+                  </div>
+                  <span className={`text-[7px] font-mono uppercase tracking-tight text-center font-extrabold ${
+                    activeRide.status === 'in_transit' ? 'text-emerald-400 animate-pulse' : 'text-slate-500'
+                  }`}>Transit</span>
+                </div>
+              </div>
+            </div>
+
             {/* Trip status header */}
             <div className="bg-white p-4 border-b border-slate-200 shrink-0 shadow-sm">
               <div className="flex justify-between items-center text-[10px] text-slate-450 font-mono mb-2">

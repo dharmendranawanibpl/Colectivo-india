@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   MapPin, 
   MapPinCheck,
@@ -1304,30 +1305,135 @@ export default function PhonePassenger({
           /* ACTIVE BOOKING IN PROGRESS (PICKING UP / ARRIVED / TRAVELLING) */
           <div className="flex-1 flex flex-col bg-stone-50 overflow-hidden" id="active_booking_screen">
             {/* Action Segment Status Card */}
-            <div className="bg-neutral-950 text-white p-4 shrink-0 shadow-md">
-              <div className="flex justify-between items-center text-xs text-neutral-400 font-mono mb-2">
-                <span>ACTIVE BOOKING</span>
-                <span className="text-amber-400 uppercase text-[9px] tracking-wider font-extrabold">In transit</span>
+            <div className="bg-neutral-950 text-white p-4 shrink-0 shadow-md flex flex-col gap-3">
+              <div className="flex justify-between items-center text-xs text-neutral-400 font-mono">
+                <span>ACTIVE BOOKING DETAILS</span>
+                <span className="text-amber-400 uppercase text-[9px] tracking-wider font-mono font-black py-0.5 px-2 bg-amber-400/10 border border-amber-400/20 rounded-full animate-pulse">
+                  ● LIVE COLECTIVO
+                </span>
               </div>
 
-              <div>
-                <h4 className="text-sm font-extrabold text-white leading-tight">
-                  {activeRide.status === 'picking_up' && 'Driver Heading to You'}
-                  {activeRide.status === 'arrived' && 'Your Colectivo has Arrived!'}
-                  {activeRide.status === 'in_transit' && 'Heading to Destination'}
-                </h4>
-                <p className="text-[10px] text-neutral-400 font-mono mt-1">
-                  Arriving in ~{activeRide.eta} mins ({activeRide.distance} km left)
-                </p>
+              <div className="grid grid-cols-2 gap-2 border-b border-neutral-900 pb-2.5">
+                <div>
+                  <h4 className="text-sm font-extrabold text-white leading-tight font-display">
+                    {activeRide.status === 'picking_up' && 'Driver Heading to You'}
+                    {activeRide.status === 'arrived' && 'Your Colectivo has Arrived!'}
+                    {activeRide.status === 'in_transit' && 'Heading to Destination'}
+                  </h4>
+                  <p className="text-[10px] text-neutral-400 font-mono mt-1">
+                    Arriving in ~{activeRide.eta} mins ({activeRide.distance} km left)
+                  </p>
+                </div>
+                
+                {/* Live contextual status graphic */}
+                <div className="flex items-center justify-end select-none">
+                  {activeRide.status === 'picking_up' && (
+                    <div className="flex items-center gap-1 text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2.5 py-1 rounded-xl font-mono font-extrabold shadow-sm animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                      <span>EN-ROUTE</span>
+                    </div>
+                  )}
+                  {activeRide.status === 'arrived' && (
+                    <div className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-xl font-mono font-extrabold shadow-sm animate-bounce">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-450 bg-emerald-400 animate-ping" />
+                      <span>ARRIVED</span>
+                    </div>
+                  )}
+                  {activeRide.status === 'in_transit' && (
+                    <div className="flex items-center gap-1 text-[10px] text-teal-400 bg-teal-500/10 border border-teal-500/25 px-2.5 py-1 rounded-xl font-mono font-extrabold shadow-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-ping" />
+                      <span>CARRYING</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Progress visual bar */}
-              <div className="w-full bg-neutral-800 h-1.5 rounded-full overflow-hidden mt-3.5 relative">
+              {/* High Fidelity Interactive Progress Flow Tracker */}
+              <div className="flex justify-between items-center gap-1 select-none relative px-1 py-1 mt-1">
+                {/* Connecting lines track */}
+                <div className="absolute top-3 left-3 right-3 h-[2.5px] bg-neutral-900 z-0" />
+                
+                {/* Active fill line */}
                 <div 
-                  className={`h-full bg-amber-500 rounded-full transition-all duration-1000 ${
-                    activeRide.status === 'in_transit' ? 'w-2/3' : 'w-1/3'
-                  }`}
+                  className="absolute top-3 left-3 h-[2.5px] bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-500 z-0 transition-all duration-[1200ms] ease-out"
+                  style={{
+                    width: activeRide.status === 'picking_up' ? '33%' :
+                           activeRide.status === 'arrived' ? '66%' :
+                           activeRide.status === 'in_transit' ? '100%' : '0%'
+                  }}
                 />
+
+                {/* Step 1: Request Confirmed */}
+                <div className="flex flex-col items-center gap-1 z-10 w-1/4">
+                  <div className="w-6 h-6 rounded-full bg-amber-500 text-neutral-950 flex items-center justify-center font-bold text-[9px] shadow-md border border-amber-400">
+                    ✓
+                  </div>
+                  <span className="text-[7.5px] font-mono uppercase font-black text-amber-500 tracking-tighter">Matched</span>
+                </div>
+
+                {/* Step 2: En Route */}
+                <div className="flex flex-col items-center gap-1 z-10 w-1/4">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[9px] transition-all duration-500 border ${
+                    activeRide.status === 'picking_up'
+                      ? 'bg-amber-400 text-neutral-950 border-amber-300 ring-4 ring-amber-500/30'
+                      : activeRide.status === 'arrived' || activeRide.status === 'in_transit'
+                        ? 'bg-amber-500 text-neutral-950 border-amber-400'
+                        : 'bg-neutral-900 text-neutral-500 border-neutral-800'
+                  }`}>
+                    {activeRide.status === 'picking_up' ? (
+                      <span className="animate-pulse">📍</span>
+                    ) : activeRide.status === 'arrived' || activeRide.status === 'in_transit' ? (
+                      '✓'
+                    ) : (
+                      '2'
+                    )}
+                  </div>
+                  <span className={`text-[7.5px] font-mono uppercase font-extrabold tracking-tighter ${
+                    activeRide.status === 'picking_up' ? 'text-amber-400 animate-pulse' :
+                    activeRide.status === 'arrived' || activeRide.status === 'in_transit' ? 'text-amber-500' : 'text-neutral-600'
+                  }`}>En Route</span>
+                </div>
+
+                {/* Step 3: Arrived */}
+                <div className="flex flex-col items-center gap-1 z-10 w-1/4">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[9px] transition-all duration-500 border ${
+                    activeRide.status === 'arrived'
+                      ? 'bg-amber-400 text-neutral-950 border-amber-300 ring-4 ring-amber-500/30'
+                      : activeRide.status === 'in_transit'
+                        ? 'bg-amber-500 text-neutral-950 border-amber-400'
+                        : 'bg-neutral-900 text-neutral-500 border-neutral-800'
+                  }`}>
+                    {activeRide.status === 'arrived' ? (
+                      <span className="animate-bounce">👋</span>
+                    ) : activeRide.status === 'in_transit' ? (
+                      '✓'
+                    ) : (
+                      '3'
+                    )}
+                  </div>
+                  <span className={`text-[7.5px] font-mono uppercase font-extrabold tracking-tighter ${
+                    activeRide.status === 'arrived' ? 'text-amber-400 animate-pulse' :
+                    activeRide.status === 'in_transit' ? 'text-amber-500' : 'text-neutral-600'
+                  }`}>Arrived</span>
+                </div>
+
+                {/* Step 4: In Transit */}
+                <div className="flex flex-col items-center gap-1 z-10 w-1/4">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[9px] transition-all duration-500 border ${
+                    activeRide.status === 'in_transit'
+                      ? 'bg-emerald-500 text-neutral-950 border-emerald-400 ring-4 ring-emerald-500/20'
+                      : 'bg-neutral-900 text-neutral-500 border-neutral-800'
+                  }`}>
+                    {activeRide.status === 'in_transit' ? (
+                      <span className="animate-pulse">🚀</span>
+                    ) : (
+                      '4'
+                    )}
+                  </div>
+                  <span className={`text-[7.5px] font-mono uppercase font-extrabold tracking-tighter ${
+                    activeRide.status === 'in_transit' ? 'text-emerald-400 animate-pulse' : 'text-neutral-600'
+                  }`}>Transit</span>
+                </div>
               </div>
             </div>
 
