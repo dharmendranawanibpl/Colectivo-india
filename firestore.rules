@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write access to all collections for our multi-role sandboxed environment
+    match /riders/{riderId} {
+      allow read, write: if true;
+    }
+    match /drivers/{driverId} {
+      allow read, write: if true;
+    }
+    match /rides/{rideId} {
+      allow read, write: if true;
+    }
+    match /settings/{settingId} {
+      allow read, write: if true;
+    }
+  }
+}

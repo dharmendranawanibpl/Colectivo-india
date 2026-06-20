@@ -1,0 +1,8 @@
+{
+  "name": "Colectivo",
+  "description": "An interactive, high-fidelity real-time simulation of a ride-sharing service, featuring synchronized Passenger and Driver apps, maps, dynamic routing, and pricing.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

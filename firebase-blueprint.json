@@ -1,0 +1,57 @@
+{
+  "collections": {
+    "riders": {
+      "schema": {
+        "id": "string",
+        "name": "string",
+        "email": "string",
+        "walletBalance": "number",
+        "isBlocked": "boolean"
+      },
+      "indexes": []
+    },
+    "drivers": {
+      "schema": {
+        "id": "string",
+        "name": "string",
+        "avatar": "string",
+        "rating": "number",
+        "status": "string",
+        "vehicle": "string",
+        "plate": "string",
+        "x": "number",
+        "y": "number",
+        "earnings": "number",
+        "tripsCount": "number",
+        "speed": "number",
+        "phone": "string",
+        "activeRideId": "string",
+        "isBlocked": "boolean",
+        "walletBalance": "number"
+      },
+      "indexes": []
+    },
+    "rides": {
+      "schema": {
+        "id": "string",
+        "cityId": "string",
+        "status": "string",
+        "tier": "string",
+        "price": "number",
+        "distance": "number",
+        "eta": "number",
+        "driverId": "string",
+        "createdAt": "string",
+        "isPaid": "boolean"
+      },
+      "indexes": []
+    },
+    "settings": {
+      "schema": {
+        "comfortRate": "number",
+        "comfortPlusRate": "number"
+      },
+      "indexes": []
+    }
+  }
+}
